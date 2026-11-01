@@ -1,0 +1,33 @@
+{
+  "_about": [
+    "Questions used only by the offline experiments, which score Jev's answers against labelled alerts in files.",
+    "The live receiver does not ask any of these; its questions are in alert_triage/questions.json.",
+    "Each one backs a measured decision; reword one and rerun its experiment to test that decision again.",
+    "Point ALERT_TRIAGE_EXPERIMENT_QUESTIONS at another file to keep several versions.",
+    "{n} is replaced by the two-digit number of the alert or group asked about."
+  ],
+
+  "same_event_as_any_recent_alert": {
+    "_used_by": "triage.py score: the context experiment on the 300 simulated alerts",
+    "_result": "measured alongside urgency; never shown on the page",
+    "question": "Does `alert` have the same underlying cause as at least one alert in `recent_alerts`?",
+    "yes": "It shares a cause with a recent alert: the same fault or the same rollout, or one is an upstream or downstream symptom of the other",
+    "no": "Every recent alert is unrelated to it: different services with no dependency between them, and no shared cause"
+  },
+
+  "same_cause_as_alert": {
+    "_used_by": "incidents.py: splitting one Alertmanager group into separate problems",
+    "_result": "made precision and recall both worse, so splits are off",
+    "question": "Does `alert` have the same underlying cause as `recent_alerts.alert_{n}`?",
+    "yes": "One fault explains both: the same failure or the same rollout, or one is an upstream or downstream symptom of the other",
+    "no": "Separate causes: each would have fired without the other, including two unrelated problems on the same service"
+  },
+
+  "same_cause_as_group": {
+    "_used_by": "incidents.py: merging groups that share a cause (also tested on ITBench-Lite)",
+    "_result": "a small gain on simulated alerts, little on ITBench-Lite, so merging was removed from the receiver",
+    "question": "Do the alerts in `group` have the same underlying cause as the alerts in `other_groups.group_{n}`? Each group is one Alertmanager notification group.",
+    "yes": "One fault explains both groups: the same failure or the same rollout, or one group's alerts are an upstream or downstream symptom of the other's",
+    "no": "Separate causes: each group would have fired without the other"
+  }
+}

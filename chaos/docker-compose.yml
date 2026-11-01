@@ -1,0 +1,93 @@
+# A shop to break, a real Prometheus and Alertmanager watching it, and the triage receiver
+# as Alertmanager's webhook. Run from the project root, inside WSL:
+#
+#   docker compose -f chaos/docker-compose.yml up -d --build
+#
+#   http://localhost:9099   triage: ranked groups
+#   http://localhost:9090   Prometheus
+#   http://localhost:9093   Alertmanager
+#
+# TYPESAFE_API_KEY is read from .env in the project root. Without it alerts are listed unscored.
+
+name: alert-triage
+
+x-shop: &shop
+  build: .
+  image: alert-triage-shop
+  command: python /app/chaos/app.py
+  volumes: ["..:/app:ro"]
+  restart: unless-stopped
+  mem_limit: 300m
+
+services:
+  frontend:
+    <<: *shop
+    environment: {ROLE: frontend}
+    ports: ["127.0.0.1:8001:8000"]
+  checkout:
+    <<: *shop
+    environment: {ROLE: checkout}
+    ports: ["127.0.0.1:8002:8000"]
+  payments:
+    <<: *shop
+    environment: {ROLE: payments}
+    ports: ["127.0.0.1:8003:8000"]
+  cart:
+    <<: *shop
+    environment: {ROLE: cart}
+    ports: ["127.0.0.1:8004:8000"]
+  search:
+    <<: *shop
+    environment: {ROLE: search}
+    ports: ["127.0.0.1:8005:8000"]
+  search-index:
+    <<: *shop
+    environment: {ROLE: search-index}
+    ports: ["127.0.0.1:8006:8000"]
+  loadgen:
+    <<: *shop
+    environment: {ROLE: loadgen}
+
+  # Noise: a batch job and a staging copy, each on its own timer. Their ports let `chaos.py storm`
+  # add the same kind of noise on demand; nothing calls them, so no real fault reaches them.
+  batch-reports:
+    <<: *shop
+    environment: {ROLE: batch-reports}
+    ports: ["127.0.0.1:8008:8000"]
+  checkout-staging:
+    <<: *shop
+    environment: {ROLE: checkout, STAGING: "1"}
+    ports: ["127.0.0.1:8007:8000"]
+
+  redis-cart:
+    image: redis:7-alpine
+    restart: unless-stopped
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    command: ["--redis.addr=redis://redis-cart:6379"]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./rules.yml:/etc/prometheus/rules.yml:ro
+    ports: ["127.0.0.1:9090:9090"]
+    restart: unless-stopped
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes: ["./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro"]
+    ports: ["127.0.0.1:9093:9093"]
+    restart: unless-stopped
+
+  triage:
+    build: .
+    image: alert-triage-shop
+    command: python -m alert_triage.receiver --host 0.0.0.0
+    working_dir: /app
+    volumes: ["..:/app"]
+    environment:
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      PYTHONUNBUFFERED: "1"
+    ports: ["127.0.0.1:9099:9099"]
+    restart: unless-stopped

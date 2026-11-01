@@ -1,0 +1,47 @@
+# The same alert names as experiments/rules/alerts.rules.yml, with short `for:` windows so a fault shows
+# up within a minute or two. env comes from Prometheus's external label.
+groups:
+  - name: shop
+    rules:
+      - alert: HighErrorRate
+        expr: sum by (service, env) (rate(http_requests_total{code=~"5.."}[1m])) / sum by (service, env) (rate(http_requests_total[1m])) > 0.05
+        for: 30s
+        labels: {severity: page}
+        annotations:
+          summary: "HighErrorRate on {{ $labels.service }}"
+          description: "5xx ratio for {{ $labels.service }} is {{ $value | humanizePercentage }} over 1m (threshold 5%)"
+      - alert: HighLatencyP99
+        expr: histogram_quantile(0.99, sum by (le, service, env) (rate(http_request_duration_seconds_bucket[1m]))) > 1
+        for: 30s
+        labels: {severity: warning}
+        annotations:
+          summary: "HighLatencyP99 on {{ $labels.service }}"
+          description: "p99 latency for {{ $labels.service }} is {{ $value | humanizeDuration }} over 1m (threshold 1s)"
+      - alert: TargetDown
+        expr: up == 0
+        for: 20s
+        labels: {severity: warning}
+        annotations:
+          summary: "TargetDown on {{ $labels.service }}"
+          description: "{{ $labels.instance }} of {{ $labels.service }} cannot be scraped"
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 20s
+        labels: {severity: page}
+        annotations:
+          summary: "RedisDown on {{ $labels.service }}"
+          description: "the Redis behind {{ $labels.service }} does not answer"
+      - alert: HighCPU
+        expr: rate(process_cpu_seconds_total{job="shop"}[1m]) > 0.85
+        for: 30s
+        labels: {severity: warning}
+        annotations:
+          summary: "HighCPU on {{ $labels.service }}"
+          description: "CPU usage of {{ $labels.service }} is {{ $value | humanizePercentage }} of a core for 30s (threshold 85%)"
+      - alert: HighMemory
+        expr: process_resident_memory_bytes{job="shop"} > 200 * 1024 * 1024
+        for: 20s
+        labels: {severity: warning}
+        annotations:
+          summary: "HighMemory on {{ $labels.service }}"
+          description: "{{ $labels.service }} is using {{ $value | humanize1024 }}B of its 300MiB limit"

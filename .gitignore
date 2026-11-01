@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+data/scores.jsonl
+data/chaos-log.jsonl
+data/incidents.jsonl
+data/itbench/
+data/
+kind/
+report.html

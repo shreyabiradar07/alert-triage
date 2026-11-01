@@ -1,0 +1,37 @@
+{
+  "_about": [
+    "The questions the alert-triage receiver asks Jev about every alert. Edit the wording here to try your own; no code change is needed.",
+    "Point ALERT_TRIAGE_QUESTIONS at another file to keep several versions side by side, and restart the receiver after an edit.",
+    "Backticked names such as `alert` and `recent_alerts` refer to fields of the state Jev is sent; keep them.",
+    "Questions used only by the offline experiments are in experiments/experiment_questions.json."
+  ],
+
+  "urgency": {
+    "_used_by": "every alert; urgency x user impact sets the page order",
+    "question": "Does `alert` report a real production problem that an on-call engineer needs to act on now?",
+    "context_rules": {
+      "_about": "Appended to the question, in this order, when that context is sent",
+      "recent_alerts": "Judge `alert` on its own evidence first. An alert in `recent_alerts` counts only if it is on the same service as `alert`, or on a service that `alert`'s service calls or is called by; ignore the rest, however many there are.",
+      "recent_deploys": "A rollout in `recent_deploys` counts only if it is of `alert`'s own service. A marginal crossing just after such a rollout is its normal warm-up; a severe one points to a bad rollout.",
+      "alert_states": "Each recent alert has a `state`. A resolved alert does not by itself show that a problem is still under way."
+    },
+    "yes": "A genuine fault in production, or a symptom of an incident that is under way: sustained errors, an outage, a crash loop, a resource about to run out",
+    "no": "Noise: a marginal or brief threshold crossing, the expected effect of a healthy rollout or a scheduled batch job, a non-production environment, or nothing that needs doing now",
+    "no_when_recent_alerts_are_sent": "even while unrelated alerts are firing on other services"
+  },
+
+  "user_impact": {
+    "_used_by": "every alert, in the same request as urgency: shown beside it",
+    "question": "How much end-user traffic is affected right now by what `alert` describes? Judge `alert` itself; recent alerts and deploys are context for it.",
+    "levels": [
+      {"name": "no user traffic",
+       "description": "No end-user traffic passes through what `alert` describes: a background or batch job, an internal tool, the monitoring itself, or a non-production environment such as staging"},
+      {"name": "users not affected yet",
+       "description": "A production component that user-facing services depend on is affected, but user requests are still answered normally for now: a degraded replica, a dependency with spare capacity, a resource trending towards its limit"},
+      {"name": "some users affected",
+       "description": "Some end-user requests are slower or failing: a user-facing service shows raised latency or a minority of its requests erroring"},
+      {"name": "users broadly affected",
+       "description": "End-user requests are failing broadly, or a user-facing service is down"}
+    ]
+  }
+}
