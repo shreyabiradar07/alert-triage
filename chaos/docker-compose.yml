@@ -1,7 +1,8 @@
 # A shop to break, a real Prometheus and Alertmanager watching it, and the triage receiver
-# as Alertmanager's webhook. Run from the project root, inside WSL:
+# as Alertmanager's webhook. Needs only Docker. Run from the project root:
 #
 #   docker compose -f chaos/docker-compose.yml up -d --build
+#   docker compose -f chaos/docker-compose.yml run --rm chaos chaos/chaos.py storm --quick
 #
 #   http://localhost:9099   triage: ranked groups
 #   http://localhost:9090   Prometheus
@@ -91,3 +92,18 @@ services:
       PYTHONUNBUFFERED: "1"
     ports: ["127.0.0.1:9099:9099"]
     restart: unless-stopped
+
+  # Runs the scripts in chaos/ (chaos.py, score_live.py, status.sh), so you don't need Python for Demo 1.
+  # - It does not start with `up`. It runs only when you call it: `docker compose run --rm chaos ...`
+  # - It can stop and start the shop's containers, because it has access to Docker (the socket below).
+  chaos:
+    build: {context: ., dockerfile: tools.Dockerfile}
+    image: alert-triage-chaos
+    profiles: [tools]
+    entrypoint: ["python3"]
+    working_dir: /app
+    volumes: ["..:/app", "/var/run/docker.sock:/var/run/docker.sock"]
+    environment:
+      CHAOS_IN_COMPOSE: "1"
+      TRIAGE_URL: http://triage:9099
+      PROM_URL: http://prometheus:9090

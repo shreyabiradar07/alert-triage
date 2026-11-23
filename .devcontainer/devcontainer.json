@@ -1,0 +1,15 @@
+// Dev container for Demo 2, the tests and the experiments.
+//
+// - It only has Python 3.12 and this project's requirements.
+// - It uses the small python:3.12-slim image (about 150 MB). Most dev container images are over 1 GB.
+// - Demo 1 is not run from here. It needs only Docker: run its commands in your own terminal (see the README).
+{
+  "name": "alert-triage",
+  "image": "python:3.12-slim",
+  "postCreateCommand": "pip install --no-cache-dir --root-user-action=ignore -r requirements.txt",
+  // Your Jev key. If TYPESAFE_API_KEY is set on your computer, it is used. If not, the key in .env is used.
+  "remoteEnv": { "TYPESAFE_API_KEY": "${localEnv:TYPESAFE_API_KEY}" },
+  "forwardPorts": [9099],
+  "portsAttributes": { "9099": { "label": "alert-triage", "onAutoForward": "openBrowser" } },
+  "customizations": { "vscode": { "extensions": ["ms-python.python"] } }
+}
