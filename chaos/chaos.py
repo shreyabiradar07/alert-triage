@@ -15,11 +15,14 @@
 Every fault is appended to data/chaos-log.jsonl with its start, end, target and whether it
 is a real problem or noise. That log is the answer key for the alerts the fault fires.
 
-Runs on the host (inside WSL), standard library only, Python 3.8 or later.
+Needs Python 3.8 or later, and nothing else. Without Python, run it in Docker instead:
+
+    docker compose -f chaos/docker-compose.yml run --rm chaos chaos/chaos.py storm --quick
 """
 
 import argparse
 import json
+import os
 import random
 import subprocess
 import threading
@@ -47,7 +50,11 @@ def blast_radius(service):
             seen.append(s)
             todo += CALLERS.get(s, [])
     return seen
-TRIAGE = "http://127.0.0.1:9099"
+# Where the shop's services are:
+# - inside the `chaos` container, by name (for example http://payments:8000)
+# - on your computer, on localhost ports (for example http://127.0.0.1:8003)
+IN_COMPOSE = bool(os.environ.get("CHAOS_IN_COMPOSE"))
+TRIAGE = "http://triage:9099" if IN_COMPOSE else "http://127.0.0.1:9099"
 
 
 def now():
@@ -61,7 +68,10 @@ def post(url, body):
 
 
 def fault(service, **settings):
-    post("http://127.0.0.1:%d/chaos" % (PORTS.get(service) or NOISE_PORTS[service]), settings)
+    if IN_COMPOSE:
+        post("http://%s:8000/chaos" % service, settings)
+    else:
+        post("http://127.0.0.1:%d/chaos" % (PORTS.get(service) or NOISE_PORTS[service]), settings)
 
 
 def compose(*args):

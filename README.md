@@ -21,7 +21,40 @@ top and the likely noise at the bottom. Your pager keeps working exactly as it d
 
 Run the commands below from the project root.
 
-## Setup
+## Quick start
+
+Both demos run without installing Python on your machine. Each needs Docker (Docker Desktop on Windows
+or macOS, Docker Engine on Linux), but they use it differently:
+
+| Demo | How to run it | You need |
+| --- | --- | --- |
+| Demo 1: break a live shop | Docker commands in your own terminal | Docker with Compose, under 1 GB of free memory (about 700 MB in testing) |
+| Demo 2: replay a real incident | Inside the dev container | Docker, plus VS Code or a GitHub account |
+
+For Jev, put your key in `.env` (see `.env.example`) first, or set `TYPESAFE_API_KEY` on your machine.
+Without a key, alerts are listed unscored.
+
+### Demo 1: Docker only
+
+No dev container needed: everything in Demo 1 already runs in containers, including the scripts that
+break the shop. Open a terminal in the project folder and follow [Demo 1](#demo-1-break-a-live-shop).
+The dev container can't run Demo 1, because it has no Docker inside it (that keeps it small).
+
+### Demo 2: the dev container
+
+The dev container is Python 3.12 with this project's requirements, on the small `python:3.12-slim`
+image (about 150 MB). It is also the place to run the tests and the experiments. Open it with one of:
+
+- **VS Code** with the Dev Containers extension: open the project folder and choose
+  **Reopen in Container**.
+- **GitHub Codespaces**: on the repository page, choose **Code**, then **Codespaces**, then
+  **Create codespace**. Nothing to install.
+
+The first start takes a minute or two. Then skip Setup and follow [Demo 2](#demo-2-replay-a-real-incident)
+in the container's terminal. Port 9099 is forwarded, so the page opens in your own browser; if 9099 is
+taken on your machine, VS Code's Ports panel shows the address it used instead.
+
+## Setup without a container
 
 Needs Python 3.10 or later. Put your key in `.env` (see `.env.example`). Without one, alerts are listed
 unscored. Every new alert is one paid Jev call; nothing is cached.
@@ -46,11 +79,12 @@ Activate the environment in each new terminal. `python` then means the same thin
 
 ## Demo 1: break a live shop
 
-Real faults fire real alerts through Prometheus and Alertmanager. Needs Docker with Compose and about
-2-3 GB of free memory. These steps are the same on Linux and macOS. On Windows, run them in a WSL
-terminal, starting from the project folder (`cd "/mnt/c/path/to/alert-triage"`).
+Real faults fire real alerts through Prometheus and Alertmanager. Needs only Docker with Compose, and
+under 1 GB of free memory (about 700 MB in testing); no Python on your machine, and no dev container. Run these from the project
+folder in your own terminal: PowerShell with Docker Desktop on Windows, or a WSL terminal if Docker runs
+inside WSL (`cd "/mnt/c/path/to/alert-triage"`). The commands are the same everywhere.
 
-1. Start the stack:
+1. Start the stack. The first run downloads and builds images (about 700 MB of disk).
 
    ```bash
    docker compose -f chaos/docker-compose.yml up -d --build
@@ -61,31 +95,34 @@ terminal, starting from the project folder (`cd "/mnt/c/path/to/alert-triage"`).
 3. Break something. Alerts appear 1-3 minutes after a fault starts.
 
    ```bash
-   python3 chaos/chaos.py storm --quick      # 6 real faults at once, with noise: ~5 min
+   docker compose -f chaos/docker-compose.yml run --rm chaos chaos/chaos.py storm --quick
    ```
 
-   Or run one fault with `python3 chaos/chaos.py run redis_outage`. `python3 chaos/chaos.py list` shows them all.
+   That runs 6 real faults at once, with noise, for about 5 minutes. To run one fault instead, end the
+   command with `chaos/chaos.py run redis_outage`; `chaos/chaos.py list` shows them all.
 
 4. Optional: score the ranking against what was injected:
 
    ```bash
-   python3 chaos/score_live.py
+   docker compose -f chaos/docker-compose.yml run --rm chaos chaos/score_live.py
    ```
 
 5. Clean up:
 
    ```bash
-   python3 chaos/chaos.py heal
+   docker compose -f chaos/docker-compose.yml run --rm chaos chaos/chaos.py heal
    docker compose -f chaos/docker-compose.yml down
    ```
 
-   On Windows, this PowerShell command then gives WSL's memory back:
+   If Docker runs inside WSL, this PowerShell command then gives WSL's memory back:
 
    ```powershell
    wsl --shutdown
    ```
 
-Prometheus is on `:9090` and Alertmanager on `:9093`.
+Prometheus is on `:9090` and Alertmanager on `:9093`. The `chaos` container runs the scripts in `chaos/`
+and drives the shop through Docker; with Python 3.8 or later you can also run them directly, such as
+`python3 chaos/chaos.py storm --quick`.
 
 ## Demo 2: replay a real incident
 

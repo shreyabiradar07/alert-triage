@@ -14,6 +14,7 @@ Standard library only, Python 3.8 or later.
 
 import argparse
 import json
+import os
 import urllib.request
 from pathlib import Path
 
@@ -65,7 +66,7 @@ def fatigue(pairs, cut=0.5):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--url", default="http://127.0.0.1:9099")
+    parser.add_argument("--url", default=os.environ.get("TRIAGE_URL", "http://127.0.0.1:9099"))
     parser.add_argument("--since", default="", help="ignore faults that started before this UTC time")
     args = parser.parse_args()
 
